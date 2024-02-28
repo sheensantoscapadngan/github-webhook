@@ -2,18 +2,11 @@ package branchhandler
 
 import (
 	"encoding/json"
-	"github-webhook/utils/event"
+	"github-webhook/app"
 	"log"
 	"net/http"
+	"time"
 )
-
-type BranchTagCreationEvent struct {
-	Action string `json:"action"`
-	Repository string `json:"repository"`
-	BranchOrTagName string `json:"branchOrTagName"`
-	Author string `json:"author"`
-	Date string `json:"date"`
-}
 
 type BranchTagCreationPayload struct {
 	Repository struct {
@@ -26,7 +19,7 @@ type BranchTagCreationPayload struct {
 	BranchOrTagName string `json:"ref"`
 }
 
-func HandleBranchTagCreation(w http.ResponseWriter, r *http.Request) {
+func HandleBranchTagCreation(a *app.App, w http.ResponseWriter, r *http.Request) {
 	var payload BranchTagCreationPayload
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	defer r.Body.Close()
@@ -36,30 +29,29 @@ func HandleBranchTagCreation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := event.WriteToMemory(payload); err != nil {
-		log.Println("Write to memory failed!")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	timeInUTC, err := time.Parse(time.RFC3339, payload.Repository.PushedAt)
+	if err != nil {
+		log.Println("Error parsing date.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	loc, _ := time.LoadLocation("Asia/Manila")
+	timeInPH := timeInUTC.In(loc)
+
+	tag, err := a.Pool.Exec(r.Context(), "INSERT INTO github.branch_tag_creation(repository_name,date,formatted_date,author,branch_tag_name) VALUES($1, $2, $3, $4, $5)",
+		payload.Repository.Name,
+		timeInPH.Format(time.DateTime),
+		timeInPH.Format(time.RFC850),
+		payload.Sender.Name,
+		payload.BranchOrTagName,
+	)
+	
+	log.Println("Inserted", tag.RowsAffected(), "BRANCH/TAG CREATION event")
+	if err != nil {
+		log.Println("Oops, an error occured when inserting event...")
+		http.Error(w, err.Error(), http.StatusInternalServerError);
 		return
 	}
-
+	
 	w.Write([]byte("HANDLED BRANCH/TAG CREATION EVENT"))
-}
-
-func (b BranchTagCreationPayload) MarshalEvent() ([]byte, error){
-	event := BranchTagCreationEvent{
-		Action: "BRANCH/TAG CREATION",
-		Repository: b.Repository.Name,
-		BranchOrTagName: b.BranchOrTagName,
-		Author: b.Sender.Name,
-		Date: b.Repository.PushedAt,
-	}
-	data, err := json.Marshal(event)
-
-	if err != nil {
-		log.Print("Oops something went wrong")
-		return nil, err
-	}
-
-	return data, nil
-
 }

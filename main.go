@@ -3,12 +3,11 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/joho/godotenv"
-
+	"github-webhook/app"
 	branchhandler "github-webhook/handlers"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -16,13 +15,12 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+	
+	app := app.NewApp()
 
-	r := chi.NewRouter()
-	r.Get("/", func (w http.ResponseWriter, r *http.Request)  {
-		w.Write([]byte("Hello world!"))
+	app.Router.Post("/branch-tag-creation", func(w http.ResponseWriter, r *http.Request) {
+		branchhandler.HandleBranchTagCreation(app, w, r)
 	})
 
-	r.Post("/branch-tag-creation", branchhandler.HandleBranchTagCreation)
-
-	http.ListenAndServe(":" + os.Getenv("PORT"), r)
+	app.Serve()
 }
