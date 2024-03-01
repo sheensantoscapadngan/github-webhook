@@ -22,9 +22,14 @@ func main() {
 	
 	app := app.NewApp()
 
-	app.Router.Post("/branch-tag-creation", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Handling branch/tag creation event")
-		branchhandler.HandleBranchTagCreation(app, w, r)
+	app.Router.Post("/", func(w http.ResponseWriter, r *http.Request) {
+		event := r.Header.Get("X-GitHub-Event")
+		log.Println("HANDLING GITHUB EVENT: ", event)
+		switch event {
+		case "create":
+			branchhandler.HandleBranchTagCreation(app, w, r)
+		}
+
 	})
 
 	app.Serve()
