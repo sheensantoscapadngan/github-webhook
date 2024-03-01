@@ -24,14 +24,14 @@ func HandleBranchTagCreation(a *app.App, w http.ResponseWriter, r *http.Request)
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	defer r.Body.Close()
 	if err != nil {
-		log.Println("Oops an error occured.")
+		log.Println("Oops an error occured.", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	timeInUTC, err := time.Parse(time.RFC3339, payload.Repository.PushedAt)
 	if err != nil {
-		log.Println("Error parsing date.")
+		log.Println("Error parsing date.", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -48,7 +48,7 @@ func HandleBranchTagCreation(a *app.App, w http.ResponseWriter, r *http.Request)
 	
 	log.Println("Inserted", tag.RowsAffected(), "BRANCH/TAG CREATION event")
 	if err != nil {
-		log.Println("Oops, an error occured when inserting event...")
+		log.Println("Oops, an error occured when inserting event...", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError);
 		return
 	}

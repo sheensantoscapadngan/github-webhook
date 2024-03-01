@@ -1,1 +1,3 @@
-Run the DB: docker-compose up
+# Run docker-compose locally:
+
+docker-compose -f docker-compose.dev.yaml up --build

@@ -18,7 +18,7 @@ type App struct {
 func NewApp() *App {
 	pool, err := pgxpool.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatal("Failed to connect to DB")
+		log.Fatal("Failed to connect to DB", err.Error())
 	}
 	app := App{
 		Router: chi.NewRouter(),
