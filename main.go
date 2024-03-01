@@ -29,6 +29,19 @@ func main() {
 		case "create":
 			branchhandler.HandleBranchTagCreation(app, w, r)
 		}
+	})
+
+	app.Router.Post("/trigger", func(w http.ResponseWriter, r *http.Request) {
+		parsedBranchTagCreation, branchTagCreationIds, err := branchhandler.ParseUnpublishedBranchTagCreation(
+			app, 
+			w,
+			r.Context(),
+		)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		
+		log.Println("PARSED BRANCH TAG CREATION IS", parsedBranchTagCreation, "WITH IDS", branchTagCreationIds)
 
 	})
 

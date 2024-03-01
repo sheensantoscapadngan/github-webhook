@@ -1,11 +1,15 @@
 package branchhandler
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"github-webhook/app"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type BranchTagCreationPayload struct {
@@ -18,6 +22,55 @@ type BranchTagCreationPayload struct {
 	} `json:"sender"`
 	BranchOrTagName string `json:"ref"`
 }
+
+type RawBranchTagCreation struct {
+	Id int
+	RepositoryName string
+	Date time.Time
+	Author string
+	BranchTagName string
+	FormattedDate string
+	IsPublished bool
+}
+
+func ParseUnpublishedBranchTagCreation(a *app.App, w http.ResponseWriter, ctx context.Context) (string, []int, error) {
+	rows, err := a.Pool.Query(ctx, `
+	SELECT branch_tag_creation_id, repository_name, date, author, branch_tag_name, formatted_date, is_published
+	FROM github.branch_tag_creation WHERE is_published = $1`, false)
+
+	if err != nil {
+		log.Println("Error fetching unpublished branch tag creation:", err.Error())
+		return "", nil, err
+	}
+	defer rows.Close()
+	entries, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (RawBranchTagCreation, error) {
+		var r RawBranchTagCreation
+		err := row.Scan(&r.Id, &r.RepositoryName, &r.Date, &r.Author, &r.BranchTagName, &r.FormattedDate, &r.IsPublished)
+		return r, err
+	})
+
+	if err != nil {
+		log.Println("Error parsing row", err.Error());
+		return "", nil, err
+	}
+
+	var parsedString string
+	var ids []int
+	for _, entry := range entries {
+		if !entry.IsPublished {
+			parsedString += fmt.Sprintf(`
+				A BRANCH/TAG with the name of %s was made in repository:%s. This was pushed by %s on %s (PHILIPPINE TIME)`,
+				entry.BranchTagName,
+				entry.RepositoryName,
+				entry.Author,
+				entry.FormattedDate,
+			)
+			ids = append(ids, entry.Id)
+		}
+	}
+
+	return parsedString, ids, nil
+ }
 
 func HandleBranchTagCreation(a *app.App, w http.ResponseWriter, r *http.Request) {
 	var payload BranchTagCreationPayload
