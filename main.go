@@ -6,7 +6,8 @@ import (
 	"os"
 
 	"github-webhook/app"
-	branchhandler "github-webhook/handlers"
+	branchtag "github-webhook/handlers"
+	publisher "github-webhook/publishers"
 
 	"github.com/joho/godotenv"
 )
@@ -27,22 +28,12 @@ func main() {
 		log.Println("HANDLING GITHUB EVENT: ", event)
 		switch event {
 		case "create":
-			branchhandler.HandleBranchTagCreation(app, w, r)
+			branchtag.HandleBranchTagCreation(app, w, r)
 		}
 	})
 
 	app.Router.Post("/trigger", func(w http.ResponseWriter, r *http.Request) {
-		parsedBranchTagCreation, branchTagCreationIds, err := branchhandler.ParseUnpublishedBranchTagCreation(
-			app, 
-			w,
-			r.Context(),
-		)
-		if err != nil {
-			log.Println(err.Error())
-		}
-		
-		log.Println("PARSED BRANCH TAG CREATION IS", parsedBranchTagCreation, "WITH IDS", branchTagCreationIds)
-
+		publisher.HandlePublishEvents(app, w, r)
 	})
 
 	app.Serve()
