@@ -22,5 +22,5 @@ func HandlePublishEvents(a *app.App, w http.ResponseWriter, r *http.Request) {
 	}
 	forPublishSlices = append(forPublishSlices, unpublishedBranchTagCreationSlice)
 
-	airopsconnect.Publish(a.Pool, forPublishSlices)
+	airopsconnect.Publish(forPublishSlices, a.Pool, r.Context())
 }
