@@ -51,12 +51,11 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 	var wg sync.WaitGroup
 	// MARK EVENTS AS PUBLISHED
 	for _, eventSlice := range s {
-		eventSliceCopy := eventSlice
 		wg.Add(1)
-		go func() {
+		go func(eventSlice eventspublisher.UnpublishedEventSlice) {
 			defer wg.Done()
-			eventSliceCopy.MarkEventsAsPublished(p, ctx)
-		}()
+			eventSlice.MarkEventsAsPublished(p, ctx)
+		}(eventSlice)
 	}
 
 	wg.Wait()
