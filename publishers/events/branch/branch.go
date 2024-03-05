@@ -73,14 +73,18 @@ func GetUnpublishedBranchTagCreation(a *app.App, ctx context.Context) (Unpublish
 	return parsedString
 }
 
-func (u UnpublishedBranchTagCreationSlice) MarkEventsAsPublished(p *pgxpool.Pool, ctx context.Context) error {
+func (u UnpublishedBranchTagCreationSlice) MarkEventsAsPublished(p *pgxpool.Pool, ctx context.Context){
 	b := &pgx.Batch{}
 
 	for _, entry := range u {
-		b.Queue("UPDATE")
+		b.Queue("UPDATE github.branch_tag_creation SET is_published = true WHERE branch_tag_creation_id = $1", entry.Id)
  	}
 
-	p.SendBatch(ctx, b)
+	err := p.SendBatch(ctx, b).Close()
+	if err != nil {
+		log.Println("FAILED TO MARK BRANCH/TAG CREATION EVENTS AS PUBLISHED:", err.Error())
+		return
+	}
 
-	return nil
+	log.Println("MARKED BRANCH/TAG CREATION EVENTS AS PUBLISHED.")
 }

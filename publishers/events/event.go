@@ -8,5 +8,5 @@ import (
 
 type UnpublishedEventSlice interface {
 	ParseString() string
-	MarkEventsAsPublished(*pgxpool.Pool, context.Context) error
+	MarkEventsAsPublished(*pgxpool.Pool, context.Context) 
 }

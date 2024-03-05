@@ -12,6 +12,7 @@ import (
 func HandlePublishEvents(a *app.App, w http.ResponseWriter, r *http.Request) {
 	var forPublishSlices []eventspublisher.UnpublishedEventSlice
 
+	// use goroutine
 	unpublishedBranchTagCreationSlice, err := branchpublisher.GetUnpublishedBranchTagCreation(
 		a,
 		r.Context(),
