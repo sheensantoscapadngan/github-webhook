@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	eventspublisher "github-webhook/publishers/events"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 type PublishToMemoryData struct {
 	Text string `json:"text"`
+	Name string `json:"name"`
 }
 
 func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx context.Context) error {
@@ -25,6 +27,7 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 
 	requestData := PublishToMemoryData{
 		Text: collatedString,
+		Name: "Github events",
 	}
 	jsonData, err := json.Marshal(requestData)
 	if err != nil {
@@ -36,7 +39,7 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 	request, err := http.NewRequest("POST", os.Getenv("AIROPS_MEMORY_UPLOAD_URL"), bytes.NewReader(jsonData))
 	if err != nil {
 		log.Println(err.Error())
-		return err;
+		return err
 	}
 
 	request.Header.Set("Content-Type", "application/json")
@@ -47,6 +50,9 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 		return err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("write to memorystore failed")
+	}
 
 	var wg sync.WaitGroup
 	// MARK EVENTS AS PUBLISHED

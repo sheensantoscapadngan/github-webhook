@@ -21,7 +21,11 @@ func HandlePublishEvents(a *app.App, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	forPublishSlices = append(forPublishSlices, unpublishedBranchTagCreationSlice)
+	if len(unpublishedBranchTagCreationSlice) > 0 {
+		forPublishSlices = append(forPublishSlices, unpublishedBranchTagCreationSlice)
+	}
 
-	airopsconnect.Publish(forPublishSlices, a.Pool, r.Context())
+	if err := airopsconnect.Publish(forPublishSlices, a.Pool, r.Context()); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

@@ -86,5 +86,5 @@ func (u UnpublishedBranchTagCreationSlice) MarkEventsAsPublished(p *pgxpool.Pool
 		return
 	}
 
-	log.Println("MARKED BRANCH/TAG CREATION EVENTS AS PUBLISHED.")
+	log.Printf("MARKED %d BRANCH/TAG CREATION EVENTS AS PUBLISHED.", len(u))
 }
