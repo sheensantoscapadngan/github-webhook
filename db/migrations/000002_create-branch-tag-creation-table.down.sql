@@ -1,0 +1,1 @@
+DROP TABLE github.branch_tag_creation;

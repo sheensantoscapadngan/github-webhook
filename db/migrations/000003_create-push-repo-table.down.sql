@@ -1,0 +1,1 @@
+DROP TABLE github.repository_push;
