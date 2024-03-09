@@ -3,7 +3,7 @@ CREATE TABLE github.repository_push (
     reference text NOT NULL,
     pusher_name text NOT NULL,
     repository_name text NOT NULL,
-    commits jsonb [] NOT NULL,
+    commits jsonb NOT NULL,
     date timestamp without time zone NOT NULL,
     PRIMARY KEY (repository_push_id)
 );

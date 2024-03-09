@@ -1,11 +1,12 @@
-package branchtag
+package branchtagcreationevt
 
 import (
 	"encoding/json"
-	"github-webhook/app"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type BranchTagCreationPayload struct {
@@ -20,7 +21,7 @@ type BranchTagCreationPayload struct {
 }
 
 
-func HandleBranchTagCreation(a *app.App, w http.ResponseWriter, r *http.Request) {
+func HandleBranchTagCreation(p *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {
 	var payload BranchTagCreationPayload
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	defer r.Body.Close()
@@ -39,7 +40,7 @@ func HandleBranchTagCreation(a *app.App, w http.ResponseWriter, r *http.Request)
 	loc, _ := time.LoadLocation("Asia/Manila")
 	timeInPH := timeInUTC.In(loc)
 
-	tag, err := a.Pool.Exec(r.Context(), "INSERT INTO github.branch_tag_creation(repository_name,date,formatted_date,author,branch_tag_name) VALUES($1, $2, $3, $4, $5)",
+	tag, err := p.Exec(r.Context(), "INSERT INTO github.branch_tag_creation(repository_name,date,formatted_date,author,branch_tag_name) VALUES($1, $2, $3, $4, $5)",
 		payload.Repository.Name,
 		timeInPH.Format(time.DateTime),
 		timeInPH.Format(time.RFC850),

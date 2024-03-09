@@ -6,7 +6,8 @@ import (
 	"os"
 
 	"github-webhook/app"
-	branchtag "github-webhook/handlers"
+	branchtagcreationevt "github-webhook/events/branch_tag_creation"
+	pushrepositoryevt "github-webhook/events/push_repository"
 	publisher "github-webhook/publishers"
 
 	"github.com/joho/godotenv"
@@ -28,7 +29,9 @@ func main() {
 		log.Println("HANDLING GITHUB EVENT: ", event)
 		switch event {
 		case "create":
-			branchtag.HandleBranchTagCreation(app, w, r)
+			branchtagcreationevt.HandleBranchTagCreation(app.Pool, w, r)
+		case "push":
+			pushrepositoryevt.HandlePushRepository(app.Pool, w, r)
 		}
 	})
 

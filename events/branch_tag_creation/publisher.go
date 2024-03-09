@@ -1,9 +1,8 @@
-package branchpublisher
+package branchtagcreationevt
 
 import (
 	"context"
 	"fmt"
-	"github-webhook/app"
 	"log"
 	"time"
 
@@ -23,8 +22,8 @@ type RawBranchTagCreation struct {
 
 type UnpublishedBranchTagCreationSlice []RawBranchTagCreation
 
-func GetUnpublishedBranchTagCreation(a *app.App, ctx context.Context) (UnpublishedBranchTagCreationSlice, error) {
-	rows, err := a.Pool.Query(ctx, `
+func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (UnpublishedBranchTagCreationSlice, error) {
+	rows, err := p.Query(ctx, `
 	SELECT branch_tag_creation_id, repository_name, date, author, branch_tag_name, formatted_date, is_published
 	FROM github.branch_tag_creation WHERE is_published = $1`, false)
 

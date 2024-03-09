@@ -2,9 +2,9 @@ package publisher
 
 import (
 	"github-webhook/app"
+	branchtagcreationevt "github-webhook/events/branch_tag_creation"
 	airopsconnect "github-webhook/publishers/connectors/airops"
 	eventspublisher "github-webhook/publishers/events"
-	branchpublisher "github-webhook/publishers/events/branch"
 	"log"
 	"net/http"
 )
@@ -13,8 +13,8 @@ func HandlePublishEvents(a *app.App, w http.ResponseWriter, r *http.Request) {
 	var forPublishSlices []eventspublisher.UnpublishedEventSlice
 
 	// use goroutine
-	unpublishedBranchTagCreationSlice, err := branchpublisher.GetUnpublishedBranchTagCreation(
-		a,
+	unpublishedBranchTagCreationSlice, err := branchtagcreationevt.GetUnpublishedBranchTagCreation(
+		a.Pool,
 		r.Context(),
 	)
 
