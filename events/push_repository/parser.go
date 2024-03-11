@@ -9,6 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type PushCommit struct {
+	Message string `json:"message"`
+	Timestamp string `json:"timestamp"`
+	Committer struct {
+		Name string `json:"name"`
+		Email string `json:"email"`
+		Username string `json:"username"`
+	} `json:"committer"`
+	ModifiedFiles []string `json:"modified"`
+}
+
 type PushRepositoryPayload struct {
 	Reference string `json:"ref"`
 	IsCreated bool `json:"created"`
@@ -20,16 +31,7 @@ type PushRepositoryPayload struct {
 		Name string `json:"full_name"`
 		PushedAt int64 `json:"pushed_at"`
 	} `json:"repository"`
-	Commits []struct {
-		Message string `json:"message"`
-		Timestamp string `json:"timestamp"`
-		Committer struct {
-			Name string `json:"name"`
-			Email string `json:"email"`
-			Username string `json:"username"`
-		} `json:"committer"`
-		ModifiedFiles []string `json:"modified"`
-	} `json:"commits"`
+	Commits []PushCommit `json:"commits"`
 }
 
 func HandlePushRepository(p *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {

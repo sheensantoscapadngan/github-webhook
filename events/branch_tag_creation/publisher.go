@@ -45,11 +45,9 @@ func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (Unpu
 	}
 
 	var branchTagCreations UnpublishedBranchTagCreationSlice
-	var ids []int
 	for _, entry := range entries {
 		if !entry.IsPublished {
 			branchTagCreations = append(branchTagCreations, entry)
-			ids = append(ids, entry.Id)
 		}
 	}
 

@@ -5,5 +5,6 @@ CREATE TABLE github.repository_push (
     repository_name text NOT NULL,
     commits jsonb NOT NULL,
     date timestamp without time zone NOT NULL,
+    is_published boolean NOT NULL DEFAULT false,
     PRIMARY KEY (repository_push_id)
 );

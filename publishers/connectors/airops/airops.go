@@ -29,6 +29,7 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 		Text: collatedString,
 		Name: "Github events",
 	}
+	
 	jsonData, err := json.Marshal(requestData)
 	if err != nil {
 		log.Println(err.Error())
