@@ -43,7 +43,7 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 		return err
 	}
 
-	log.Println("Publishing collation uuid:", uuid.String())
+	log.Println("Publishing collation uuid:", uuid.String(), "WITH LEN", len(collatedString))
 
 	// CALL AIROPS API
 	request, err := http.NewRequest("POST", os.Getenv("AIROPS_MEMORY_UPLOAD_URL"), bytes.NewReader(jsonData))

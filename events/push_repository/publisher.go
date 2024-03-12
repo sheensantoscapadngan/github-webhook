@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,19 +57,25 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Unpubli
 		return nil, err
 	}
 
-	var repositoryPush UnpublishedRepositoryPushSlice
-	for _, entry := range entries {
-		if !entry.IsPublished {
-			repositoryPush = append(repositoryPush, entry)
-		}
-	}
-
-	return repositoryPush, nil
+	return entries, nil
  }
 
  func (u UnpublishedRepositoryPushSlice) ParseString() string {
 	parsedString := ""
 	loc, _ := time.LoadLocation("Asia/Manila")
+
+	commitMessageMaxLen, err := strconv.ParseInt(os.Getenv("PUSH_REPOSITORY_COMMIT_MESSAGE_MAX_LENGTH"), 10, 0)
+	if err != nil {
+		log.Println(err.Error())
+		return ""
+	}
+
+	modifiedFilesMaxEntries, err := strconv.ParseInt(os.Getenv("PUSH_REPOSITORY_MODIFIED_FILES_MAX_ENTRIES"), 10, 0)
+	if err != nil {
+		log.Println(err.Error())
+		return ""
+	}
+
 	prRegex, err := regexp.Compile(`^Merge pull request.*`)
 	if err != nil {
 		log.Println(err.Error())
@@ -81,8 +89,22 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Unpubli
 	}
 	
 	for _, entry := range u {
+		modifiedFilesMap := make(map[string]bool)
+
 		commitString := ""
-		for commitIndex, commit := range entry.Commits {
+		// filter out commits not made by pusher
+		var ownCommits []PushCommit
+		for _, commit := range entry.Commits {
+			if commit.Committer.Username == entry.Pusher {
+				ownCommits = append(ownCommits, commit)
+			}
+		}
+
+		if len(ownCommits) == 0 {
+			continue
+		}
+
+		for commitIndex, commit := range ownCommits {
 			commitTimeInUTC, err := time.Parse(time.RFC3339, commit.Timestamp)
 			if err != nil {
 				log.Println("Error parsing date.", err.Error())
@@ -91,32 +113,42 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Unpubli
 		
 			commitTimeInPH := commitTimeInUTC.In(loc)
 
-			var modifiedFiles string
-
 			// do not include modified files when push is a merge branch because it's unnecessary
-			if prRegex.MatchString(commit.Message) || mergeRegex.MatchString(commit.Message){
-				modifiedFiles = "N/A, too many to include"
-			} else {
-				modifiedFiles = strings.Join(commit.ModifiedFiles, ",")
+			if !(prRegex.MatchString(commit.Message) || mergeRegex.MatchString(commit.Message)){
+				for _, file := range commit.ModifiedFiles {
+					modifiedFilesMap[file] = true
+				}
 			}
 
-			commitString += fmt.Sprintf("%d. %s/%s/%s commited with the message:%s on %s (PHILIPPINE TIME). This modified the following files:%s\n\n",
+			message := commit.Message
+			messageRune := []rune(message)
+			if len(messageRune) > int(commitMessageMaxLen) {
+				message = string(messageRune[:commitMessageMaxLen]) + "..."
+			}
+
+			commitString += fmt.Sprintf("%d.%s commited with message:%s on %s\n",
 				commitIndex+1,
 				commit.Committer.Username,
-				commit.Committer.Email,
-				commit.Committer.Name,
-				commit.Message,
+				message,
 				commitTimeInPH,
-				modifiedFiles,
 			)
 		}
 
-		parsedString += fmt.Sprintf("A Repository Push Event was made with a reference of %s to repository:%s. This was pushed by %s on %s (PHILIPPINE TIME). It contained the following commits:\n%s\n",
+		var modifiedFiles []string
+		for key := range modifiedFilesMap {
+			modifiedFiles = append(modifiedFiles, key)
+			if len(modifiedFiles) > int(modifiedFilesMaxEntries) {
+				break
+			}
+		}
+
+		parsedString += fmt.Sprintf("PUSH REPOSITORY EVENT\nReference:%s\nRepository:%s\nAuthor:%s\nDate/Time:%s\nCommits:%sModified files:%s\n\n",
 			entry.Reference,
 			entry.RepositoryName,
 			entry.Pusher,
 			entry.Date.Format(time.RFC850),
 			commitString,
+			strings.Join(modifiedFiles, ","),
 		)
  	}
 
