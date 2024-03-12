@@ -15,8 +15,15 @@ docker-compose -f docker-compose.dev.yaml up --build
 3. Push to registry
    docker push LOCATION.pkg.dev/PROJECT_ID/ARTIFACT_REGISTRY_REPOSITORY/IMAGE:TAG
 
-# How to run DB migrations [https://github.com/golang-migrate/migrate/blob/master/GETTING_STARTED.md]
+# How to run DB migrations [Migration Docs](https://github.com/golang-migrate/migrate/blob/master/GETTING_STARTED.md)
 
 - migrate create -ext sql -dir db/migrations -seq create_users_table
 - migrate -database DATABASE_URL -path ./db/migrations up
 - migrate -database DATABASE_URL -path ./db/migrations down
+
+# TO DOs
+
+[] add payload validation to webhook requests
+[] add validation for trigger endpoint
+[] setup scheduled job in production to trigger publishing of events
+[] explore PrivateGPT for self-hosting

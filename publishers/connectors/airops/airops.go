@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 type PublishToMemoryData struct {
@@ -25,9 +26,15 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 		collatedString += eventSlice.ParseString() + "\n"
 	}
 
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	log.Println("AIROPS COLLATED STRING", collatedString)
 	requestData := PublishToMemoryData{
 		Text: collatedString,
-		Name: "Github events",
+		Name: "Github events: " + uuid.String(),
 	}
 	
 	jsonData, err := json.Marshal(requestData)
@@ -35,6 +42,8 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 		log.Println(err.Error())
 		return err
 	}
+
+	log.Println("Publishing collation uuid:", uuid.String())
 
 	// CALL AIROPS API
 	request, err := http.NewRequest("POST", os.Getenv("AIROPS_MEMORY_UPLOAD_URL"), bytes.NewReader(jsonData))

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -67,10 +68,21 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Unpubli
  func (u UnpublishedRepositoryPushSlice) ParseString() string {
 	parsedString := ""
 	loc, _ := time.LoadLocation("Asia/Manila")
+	prRegex, err := regexp.Compile(`^Merge pull request.*`)
+	if err != nil {
+		log.Println(err.Error())
+		return ""
+	}
+
+	mergeRegex, err := regexp.Compile(`Merge.*branch.*into.*`)
+	if err != nil {
+		log.Println(err.Error())
+		return ""
+	}
 	
 	for _, entry := range u {
 		commitString := ""
-		for _, commit := range entry.Commits {
+		for commitIndex, commit := range entry.Commits {
 			commitTimeInUTC, err := time.Parse(time.RFC3339, commit.Timestamp)
 			if err != nil {
 				log.Println("Error parsing date.", err.Error())
@@ -79,19 +91,27 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Unpubli
 		
 			commitTimeInPH := commitTimeInUTC.In(loc)
 
-			commitString += fmt.Sprintf(`%s/%s/%s commited with the message:%s on %s (PHILIPPINE TIME). This modified the following files: %s\n\n`,
+			var modifiedFiles string
+
+			// do not include modified files when push is a merge branch because it's unnecessary
+			if prRegex.MatchString(commit.Message) || mergeRegex.MatchString(commit.Message){
+				modifiedFiles = "N/A, too many to include"
+			} else {
+				modifiedFiles = strings.Join(commit.ModifiedFiles, ",")
+			}
+
+			commitString += fmt.Sprintf("%d. %s/%s/%s commited with the message:%s on %s (PHILIPPINE TIME). This modified the following files:%s\n\n",
+				commitIndex+1,
 				commit.Committer.Username,
 				commit.Committer.Email,
 				commit.Committer.Name,
 				commit.Message,
 				commitTimeInPH,
-				strings.Join(commit.ModifiedFiles, ","),
+				modifiedFiles,
 			)
 		}
 
-		parsedString += fmt.Sprintf(`
-			A Repository Push Event was made with a reference of %s to repository:%s. This was pushed by %s on %s (PHILIPPINE TIME).
-			It contained the following commits:%s`,
+		parsedString += fmt.Sprintf("A Repository Push Event was made with a reference of %s to repository:%s. This was pushed by %s on %s (PHILIPPINE TIME). It contained the following commits:\n%s\n",
 			entry.Reference,
 			entry.RepositoryName,
 			entry.Pusher,
