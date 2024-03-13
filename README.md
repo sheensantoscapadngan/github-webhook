@@ -23,7 +23,15 @@ docker-compose -f docker-compose.dev.yaml up --build
 
 # TO DOs
 
+[] explore self-hosting option
+
+- Embedding generation: [nomic-embed-text](https://ollama.com/library/nomic-embed-text)
+- Vector database: [ChromaDB](https://docs.trychroma.com/usage-guide)
+- LLM model: [gemma](https://ollama.com/library/gemma)
+- Processor: [Langchain](https://js.langchain.com/docs/get_started/quickstart)
+
 [] add payload validation to webhook requests
+
 [] add validation for trigger endpoint
+
 [] setup scheduled job in production to trigger publishing of events
-[] explore PrivateGPT for self-hosting
