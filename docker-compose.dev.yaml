@@ -7,10 +7,10 @@ services:
     depends_on:
       - db
     build:
-      context: ./
+      context: ./webhook-server
       dockerfile: Dockerfile
     volumes:
-      - ./:/app
+      - ./webhook-server:/app
     command: go run main.go
     environment:
       - APP_ENV=development
