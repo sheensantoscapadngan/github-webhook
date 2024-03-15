@@ -20,7 +20,6 @@ type BranchTagCreationPayload struct {
 	BranchOrTagName string `json:"ref"`
 }
 
-
 func HandleBranchTagCreation(p *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {
 	var payload BranchTagCreationPayload
 	err := json.NewDecoder(r.Body).Decode(&payload)

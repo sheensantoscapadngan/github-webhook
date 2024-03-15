@@ -20,9 +20,11 @@ type RawBranchTagCreation struct {
 	IsPublished bool
 }
 
-type UnpublishedBranchTagCreationSlice []RawBranchTagCreation
+type RawBranchTagCreationSlice []RawBranchTagCreation
 
-func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (UnpublishedBranchTagCreationSlice, error) {
+const EVENT_TYPE = "BRANCH_TAG_CREATION"
+
+func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (RawBranchTagCreationSlice, error) {
 	rows, err := p.Query(ctx, `
 	SELECT branch_tag_creation_id, repository_name, date, author, branch_tag_name, formatted_date, is_published
 	FROM github.branch_tag_creation WHERE is_published = $1`, false)
@@ -44,7 +46,7 @@ func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (Unpu
 		return nil, err
 	}
 
-	var branchTagCreations UnpublishedBranchTagCreationSlice
+	var branchTagCreations RawBranchTagCreationSlice
 	for _, entry := range entries {
 		if !entry.IsPublished {
 			branchTagCreations = append(branchTagCreations, entry)
@@ -54,26 +56,46 @@ func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (Unpu
 	return branchTagCreations, nil
  }
 
- func (u UnpublishedBranchTagCreationSlice) ParseString() string {
-	var parsedString string
+ func (r RawBranchTagCreation) ParseString() string {
+	return fmt.Sprintf(`
+		A BRANCH/TAG with the name of %s was made in repository:%s. This was pushed by %s on %s (PHILIPPINE TIME)`,
+		r.BranchTagName,
+		r.RepositoryName,
+		r.Author,
+		r.FormattedDate,
+	)
+}
 
-	for _, entry := range u {
-		parsedString += fmt.Sprintf(`
-			A BRANCH/TAG with the name of %s was made in repository:%s. This was pushed by %s on %s (PHILIPPINE TIME)`,
-			entry.BranchTagName,
-			entry.RepositoryName,
-			entry.Author,
-			entry.FormattedDate,
-		)
+
+func (rs RawBranchTagCreationSlice) ParseString() string {
+	parsedString := ""
+
+	for _, r := range rs {
+		parsedString += r.ParseString()
  	}
 
 	return parsedString
 }
 
-func (u UnpublishedBranchTagCreationSlice) MarkEventsAsPublished(p *pgxpool.Pool, ctx context.Context){
+
+func (rs RawBranchTagCreationSlice) GetEventType() string {
+	return EVENT_TYPE
+}
+
+func (rbs RawBranchTagCreationSlice) ParseStringByBatch() []string {
+	var parsedEntries []string
+	for _, entry := range rbs {
+		parsedEntries = append(parsedEntries, entry.ParseString())
+	} 
+
+	return parsedEntries
+}
+
+
+func (rbs RawBranchTagCreationSlice) MarkEventsAsPublished(p *pgxpool.Pool, ctx context.Context){
 	b := &pgx.Batch{}
 
-	for _, entry := range u {
+	for _, entry := range rbs {
 		b.Queue("UPDATE github.branch_tag_creation SET is_published = true WHERE branch_tag_creation_id = $1", entry.Id)
  	}
 
@@ -83,5 +105,5 @@ func (u UnpublishedBranchTagCreationSlice) MarkEventsAsPublished(p *pgxpool.Pool
 		return
 	}
 
-	log.Printf("MARKED %d BRANCH/TAG CREATION EVENTS AS PUBLISHED.", len(u))
+	log.Printf("MARKED %d BRANCH/TAG CREATION EVENTS AS PUBLISHED.", len(rbs))
 }

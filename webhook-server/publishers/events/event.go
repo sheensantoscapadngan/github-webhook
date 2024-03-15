@@ -6,7 +6,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type UnpublishedEvent interface {
+	ParseString() string
+	MarkEventAsPublished(*pgxpool.Pool, context.Context)
+}
+
 type UnpublishedEventSlice interface {
 	ParseString() string
-	MarkEventsAsPublished(*pgxpool.Pool, context.Context) 
+	ParseStringByBatch() []string
+	MarkEventsAsPublished(*pgxpool.Pool, context.Context)
+	GetEventType() string
 }
