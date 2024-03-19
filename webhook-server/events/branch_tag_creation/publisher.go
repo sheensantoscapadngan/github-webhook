@@ -18,6 +18,7 @@ type RawBranchTagCreation struct {
 	BranchTagName string `json:"branchTagName"`
 	FormattedDate string `json:"formattedDate"`
 	IsPublished bool `json:"isPublished"`
+	SummarizedContent string `json:"summarizedContent"`
 }
 
 type RawBranchTagCreationSlice []RawBranchTagCreation
@@ -38,6 +39,7 @@ func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (RawB
 	entries, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (RawBranchTagCreation, error) {
 		var r RawBranchTagCreation
 		err := row.Scan(&r.Id, &r.RepositoryName, &r.Date, &r.Author, &r.BranchTagName, &r.FormattedDate, &r.IsPublished)
+		AttachSummary(&r)
 		return r, err
 	})
 
@@ -56,8 +58,8 @@ func GetUnpublishedBranchTagCreation(p *pgxpool.Pool, ctx context.Context) (RawB
 	return branchTagCreations, nil
  }
 
- func (r RawBranchTagCreation) ParseString() string {
-	return fmt.Sprintf(`
+ func AttachSummary(r *RawBranchTagCreation){
+	r.SummarizedContent = fmt.Sprintf(`
 		A BRANCH/TAG with the name of %s was made in repository:%s. This was pushed by %s on %s (PHILIPPINE TIME)`,
 		r.BranchTagName,
 		r.RepositoryName,
@@ -71,7 +73,7 @@ func (rs RawBranchTagCreationSlice) ParseString() string {
 	parsedString := ""
 
 	for _, r := range rs {
-		parsedString += r.ParseString()
+		parsedString += r.SummarizedContent
  	}
 
 	return parsedString
@@ -85,7 +87,7 @@ func (rs RawBranchTagCreationSlice) GetEventType() string {
 func (rbs RawBranchTagCreationSlice) ParseStringByBatch() []string {
 	var parsedEntries []string
 	for _, entry := range rbs {
-		parsedEntries = append(parsedEntries, entry.ParseString())
+		parsedEntries = append(parsedEntries, entry.SummarizedContent)
 	} 
 
 	return parsedEntries

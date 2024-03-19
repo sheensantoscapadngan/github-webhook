@@ -18,6 +18,7 @@ type PushCommit struct {
 		Username string `json:"username"`
 	} `json:"committer"`
 	ModifiedFiles []string `json:"modified"`
+	SummarizedContent string `json:"summarizedContent"`
 }
 
 type PushRepositoryPayload struct {

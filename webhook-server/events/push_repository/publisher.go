@@ -22,6 +22,7 @@ type RepositoryPush struct {
 	Pusher string `json:"pusher"`
 	Commits []PushCommit `json:"commits"`
 	IsPublished bool `json:"isPublished"`
+	SummarizedContent string `json:"summarizedContent"`
 }
 
 type RepositoryPushSlice []RepositoryPush
@@ -45,10 +46,12 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Reposit
 		if err := row.Scan(&r.Id, &r.Reference, &r.Pusher, &r.RepositoryName, &commits, &r.Date, &r.IsPublished); err != nil {
 			return r, err
 		}
-
+		
 		if err := json.Unmarshal(commits, &r.Commits); err != nil {
 			return r, err
 		}
+
+		AttachSummary(&r)
 
 		return r, nil
 	})
@@ -61,36 +64,35 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Reposit
 	return entries, nil
  }
 
- func (rp RepositoryPush) ParseString() string {
+ func AttachSummary(rp *RepositoryPush) {
 	loc, _ := time.LoadLocation("Asia/Manila")
 
 	commitMessageMaxLen, err := strconv.ParseInt(os.Getenv("PUSH_REPOSITORY_COMMIT_MESSAGE_MAX_LENGTH"), 10, 0)
 	if err != nil {
 		log.Println(err.Error())
-		return ""
+		return
 	}
 
 	modifiedFilesMaxEntries, err := strconv.ParseInt(os.Getenv("PUSH_REPOSITORY_MODIFIED_FILES_MAX_ENTRIES"), 10, 0)
 	if err != nil {
 		log.Println(err.Error())
-		return ""
+		return
 	}
 
 	prRegex, err := regexp.Compile(`^Merge pull request.*`)
 	if err != nil {
 		log.Println(err.Error())
-		return ""
+		return
 	}
 
 	mergeRegex, err := regexp.Compile(`Merge.*branch.*into.*`)
 	if err != nil {
 		log.Println(err.Error())
-		return ""
+		return
 	}
 
 	modifiedFilesMap := make(map[string]bool)
 
-	commitString := ""
 	// filter out commits not made by pusher
 	var ownCommits []PushCommit
 	for _, commit := range rp.Commits {
@@ -100,7 +102,7 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Reposit
 	}
 
 	if len(ownCommits) == 0 {
-		return ""
+		return
 	}
 
 	for commitIndex, commit := range ownCommits {
@@ -125,7 +127,7 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Reposit
 			message = string(messageRune[:commitMessageMaxLen]) + "..."
 		}
 
-		commitString += fmt.Sprintf("%d.%s commited with message:%s on %s\n",
+		ownCommits[commitIndex].SummarizedContent = fmt.Sprintf("%d.%s commited with message:%s on %s\n",
 			commitIndex+1,
 			commit.Committer.Username,
 			message,
@@ -141,22 +143,21 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Reposit
 		}
 	}
 
-	return fmt.Sprintf(`
-		A Github Repository Push Event was made with a reference of %s to repository:%s. This was pushed by %s on %s (PHILIPPINE TIME). It modified the following files:%s.
-		It contained the following commits:%s`,
+	rp.Commits = ownCommits
+	rp.SummarizedContent = fmt.Sprintf(`
+		A Github Repository Push Event was made with a reference of %s to repository:%s. This was pushed by %s on %s (PHILIPPINE TIME). It modified the following files:%s`,
 		rp.Reference,
 		rp.RepositoryName,
 		rp.Pusher,
 		rp.Date.Format(time.RFC850),
 		modifiedFiles,
-		commitString,
 	)
  }
 
  func (rps RepositoryPushSlice) ParseString() string {
 	parsedString := ""	
 	for _, entry := range rps {
-		parsedString += entry.ParseString()
+		parsedString += entry.SummarizedContent
  	}
 
 	return parsedString
@@ -186,7 +187,7 @@ func (rps RepositoryPushSlice) GetEventType() string {
 func (rps RepositoryPushSlice) ParseStringByBatch() []string {
 	var parsedEntries []string
 	for _, entry := range rps {
-		parsedEntries = append(parsedEntries, entry.ParseString())
+		parsedEntries = append(parsedEntries, entry.SummarizedContent)
 	} 
 
 	return parsedEntries

@@ -7,7 +7,6 @@ import (
 )
 
 type UnpublishedEvent interface {
-	ParseString() string
 	MarkEventAsPublished(*pgxpool.Pool, context.Context)
 }
 
