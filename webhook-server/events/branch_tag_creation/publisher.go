@@ -11,13 +11,13 @@ import (
 )
 
 type RawBranchTagCreation struct {
-	Id int
-	RepositoryName string
-	Date time.Time
-	Author string
-	BranchTagName string
-	FormattedDate string
-	IsPublished bool
+	Id int `json:"branchTagCreationId"`
+	RepositoryName string `json:"repositoryName"`
+	Date time.Time `json:"date"`
+	Author string `json:"author"`
+	BranchTagName string `json:"branchTagName"`
+	FormattedDate string `json:"formattedDate"`
+	IsPublished bool `json:"isPublished"`
 }
 
 type RawBranchTagCreationSlice []RawBranchTagCreation

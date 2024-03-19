@@ -16,7 +16,7 @@ import (
 )
 
 type PublishBatchToBrainData struct {
-	BatchContent []string `json:"batchContent"`
+	BatchContent eventspublisher.UnpublishedEventSlice `json:"batchContent"`
 }
 
 func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx context.Context) error {
@@ -27,19 +27,25 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 		wg.Add(1)
 		go func (slice eventspublisher.UnpublishedEventSlice)  {
 			defer wg.Done()
-			parsedEvents := slice.ParseStringByBatch()
 
-			requestData := PublishBatchToBrainData{
-				BatchContent: parsedEvents,
-			}
-			
-			jsonData, err := json.Marshal(requestData)
+			byteData, err := json.Marshal(slice)
 			if err != nil {
 				log.Println(err.Error())
 				errChannel <- err
 				return
 			}
-		
+			
+			req := map[string]json.RawMessage {
+				"batchContent": byteData,
+			}
+
+			reqJSON, err := json.Marshal(req)
+			if err != nil {
+				log.Println(err.Error())
+				errChannel <- err
+				return
+			}
+
 			postURL := os.Getenv("BRAIN_UPLOAD_URL")
 			switch slice.GetEventType() {
 				case pushrepositoryevt.EVENT_TYPE:
@@ -48,7 +54,7 @@ func Publish(s []eventspublisher.UnpublishedEventSlice, p *pgxpool.Pool, ctx con
 					postURL += "/branch-tag-creation/batch"
 			}
 
-			request, err := http.NewRequest("POST", postURL, bytes.NewReader(jsonData))
+			request, err := http.NewRequest("POST", postURL, bytes.NewReader(reqJSON))
 			if err != nil {
 				log.Println(err.Error())
 				errChannel <- err

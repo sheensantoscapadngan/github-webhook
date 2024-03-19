@@ -8,7 +8,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,13 +15,13 @@ import (
 )
 
 type RepositoryPush struct {
-	Id int
-	Reference string
-	RepositoryName string
-	Date time.Time
-	Pusher string
-	Commits []PushCommit
-	IsPublished bool
+	Id int `json:"repositoryPushId"`
+	Reference string `json:"reference"`
+	RepositoryName string `json:"repositoryName"`
+	Date time.Time `json:"date"`
+	Pusher string `json:"pusher"`
+	Commits []PushCommit `json:"commits"`
+	IsPublished bool `json:"isPublished"`
 }
 
 type RepositoryPushSlice []RepositoryPush
@@ -32,7 +31,7 @@ const EVENT_TYPE = "REPOSITORY_PUSH"
 func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (RepositoryPushSlice, error) {
 	rows, err := p.Query(ctx, `
 	SELECT repository_push_id, reference, pusher_name, repository_name, commits, date, is_published
-	FROM github.repository_push WHERE is_published = $1`, false)
+	FROM github.repository_push WHERE is_published = $1 LIMIT 10`, true)
 
 	if err != nil {
 		log.Println("Error fetching unpublished branch tag creation:", err.Error())
@@ -142,13 +141,15 @@ func GetUnpublishedRepositoryPush(p *pgxpool.Pool, ctx context.Context) (Reposit
 		}
 	}
 
-	return fmt.Sprintf("PUSH REPOSITORY EVENT\nReference:%s\nRepository:%s\nAuthor:%s\nDate/Time:%s\nCommits:%sModified files:%s\n\n",
+	return fmt.Sprintf(`
+		A Github Repository Push Event was made with a reference of %s to repository:%s. This was pushed by %s on %s (PHILIPPINE TIME). It modified the following files:%s.
+		It contained the following commits:%s`,
 		rp.Reference,
 		rp.RepositoryName,
 		rp.Pusher,
 		rp.Date.Format(time.RFC850),
+		modifiedFiles,
 		commitString,
-		strings.Join(modifiedFiles, ","),
 	)
  }
 
